@@ -1,0 +1,5 @@
+rootProject.name = 'integration-tests-toolkit'
+
+include 'core'
+include 'wiremock'
+
