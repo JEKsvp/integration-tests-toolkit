@@ -1,6 +1,5 @@
 package com.abadeksvp.integrationteststoolkit.wiremock;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -10,14 +9,16 @@ import org.skyscreamer.jsonassert.JSONCompareMode;
 import org.skyscreamer.jsonassert.JSONCompareResult;
 import org.skyscreamer.jsonassert.comparator.CustomComparator;
 
-import com.abadeksvp.integrationteststoolkit.ResourceReader;
+import com.abadeksvp.integrationteststoolkit.resource.ClasspathResourceReader;
 import com.github.tomakehurst.wiremock.client.VerificationException;
 import com.github.tomakehurst.wiremock.client.WireMock;
+import com.github.tomakehurst.wiremock.http.HttpHeaders;
 import com.github.tomakehurst.wiremock.http.RequestMethod;
 import com.github.tomakehurst.wiremock.matching.RequestPatternBuilder;
 import com.github.tomakehurst.wiremock.matching.UrlPattern;
 import com.github.tomakehurst.wiremock.verification.LoggedRequest;
 
+import lombok.Setter;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 
@@ -25,51 +26,63 @@ import static com.abadeksvp.integrationteststoolkit.JsonAssertUtils.withCompareR
 import static com.github.tomakehurst.wiremock.client.ResponseDefinitionBuilder.responseDefinition;
 
 
-@SuppressWarnings("unused")
 @Slf4j
-public class WireMockUtils {
+public class WireMockShortcut {
 
-    public static final String EMPTY_RESPONSE = "";
+    @Setter
+    private ClasspathResourceReader resourceReader = new ClasspathResourceReader();
 
-    private static final ResourceReader resourceReader = new ResourceReader();
+    @Setter
+    private HttpHeaders defaultHeaders = new HttpHeaders();
 
-    public static void createEmptyStub(RequestMethod httpMethod, UrlPattern urlPattern) {
+    public void createEmptyStub(RequestMethod httpMethod, UrlPattern urlPattern) {
         WireMock.stubFor(WireMock.request(httpMethod.getName(), urlPattern)
                 .willReturn(responseDefinition()
-                        .withHeader("Content-Type", "application/json")
+                        .withHeaders(defaultHeaders)
                         .withStatus(200)
                 ));
     }
 
-    public static void createStubFromFile(RequestMethod httpMethod, UrlPattern urlPattern, String resourceName) {
+    public void createStub(RequestMethod httpMethod, UrlPattern urlPattern, String responseBody) {
         WireMock.stubFor(WireMock.request(httpMethod.getName(), urlPattern)
                 .willReturn(responseDefinition()
-                        .withHeader("Content-Type", "application/json")
-                        .withStatus(200)
-                        .withBodyFile(resourceReader.readString(resourceName))
-                ));
-    }
-
-    public static void createStub(RequestMethod httpMethod, UrlPattern urlPattern, String responseBody) {
-        WireMock.stubFor(WireMock.request(httpMethod.getName(), urlPattern)
-                .willReturn(responseDefinition()
-                        .withHeader("Content-Type", "application/json")
+                        .withHeaders(defaultHeaders)
                         .withStatus(200)
                         .withBody(responseBody)
                 ));
     }
 
-    public static void verifyRequestFromFile(RequestMethod httpMethod, UrlPattern urlPattern, String resourceName) {
+    public void createStubFromResource(RequestMethod httpMethod, UrlPattern urlPattern, String resourceName) {
+        WireMock.stubFor(WireMock.request(httpMethod.getName(), urlPattern)
+                .willReturn(responseDefinition()
+                        .withHeaders(defaultHeaders)
+                        .withStatus(200)
+                        .withBody(resourceReader.readString(resourceName))
+                ));
+    }
+
+    public void verifyRequestWithResource(RequestMethod httpMethod, UrlPattern urlPattern, String resourceName) {
         verifyRequest(httpMethod, urlPattern, resourceReader.readString(resourceName));
     }
 
-    public static void verifyRequest(RequestMethod httpMethod, UrlPattern urlPattern, String expectedResponse,
+    public void verifyRequestWithResource(RequestMethod httpMethod, UrlPattern urlPattern, String resourceName,
+            String... ignoredFields) {
+        verifyRequest(httpMethod, urlPattern, resourceReader.readString(resourceName),
+                withCompareRules(JSONCompareMode.STRICT, ignoredFields));
+    }
+
+    public void verifyRequestWithResource(RequestMethod httpMethod, UrlPattern urlPattern, String resourceName,
+            CustomComparator comparator) {
+        verifyRequest(httpMethod, urlPattern, resourceReader.readString(resourceName), comparator);
+    }
+
+    public void verifyRequest(RequestMethod httpMethod, UrlPattern urlPattern, String expectedResponse,
             String... ignoredFields) {
         verifyRequest(httpMethod, urlPattern, expectedResponse,
                 withCompareRules(JSONCompareMode.STRICT, ignoredFields));
     }
 
-    public static void verifyRequest(RequestMethod httpMethod, UrlPattern urlPattern, String expectedResponse,
+    public void verifyRequest(RequestMethod httpMethod, UrlPattern urlPattern, String expectedResponse,
             CustomComparator comparator) {
         if (httpMethod == RequestMethod.GET) {
             verifyRequest(WireMock.getRequestedFor(urlPattern), expectedResponse, comparator);
@@ -93,7 +106,7 @@ public class WireMockUtils {
     }
 
     @SneakyThrows
-    public static void verifyRequest(RequestPatternBuilder requestPatternBuilder, String expectedJson,
+    public void verifyRequest(RequestPatternBuilder requestPatternBuilder, String expectedJson,
             CustomComparator comparator) {
         List<LoggedRequest> requests = WireMock.findAll(requestPatternBuilder);
         List<String> requestBodies = new ArrayList<>();
@@ -110,7 +123,7 @@ public class WireMockUtils {
                         expectedJson, Arrays.toString(requestBodies.toArray())));
     }
 
-    private static String readResource(String resourceName) {
+    private String readResource(String resourceName) {
         return resourceReader.readString(resourceName);
     }
 }

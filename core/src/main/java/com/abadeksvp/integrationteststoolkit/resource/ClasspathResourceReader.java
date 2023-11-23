@@ -1,4 +1,4 @@
-package com.abadeksvp.integrationteststoolkit;
+package com.abadeksvp.integrationteststoolkit.resource;
 
 import java.io.IOException;
 import java.net.URL;
@@ -8,9 +8,10 @@ import org.apache.commons.io.IOUtils;
 
 import lombok.SneakyThrows;
 
-public class ResourceReader {
+public class ClasspathResourceReader implements ResourceReader {
 
     @SneakyThrows
+    @Override
     public String readString(String name) {
         URL resource = getClass().getResource(name);
         if (resource == null) {
@@ -19,29 +20,13 @@ public class ResourceReader {
         return IOUtils.toString(resource, StandardCharsets.UTF_8);
     }
 
-    public ReadResult read(String name) throws IOException {
+    @SneakyThrows
+    @Override
+    public ReadResult read(String name) {
         URL resource = getClass().getResource(name);
         if (resource == null) {
             throw new IOException("Resource not found: " + name);
         }
         return new ReadResult(IOUtils.toString(resource, StandardCharsets.UTF_8));
-    }
-
-    public static class ReadResult {
-
-        private String text;
-
-        ReadResult(String text) {
-            this.text = text;
-        }
-
-        public ReadResult andReplace(String target, String replacement) {
-            this.text = text.replaceAll(target, replacement);
-            return this;
-        }
-
-        public String get() {
-            return this.text;
-        }
     }
 }
