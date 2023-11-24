@@ -2,7 +2,6 @@ package com.abadeksvp.integrationteststoolkit.resource;
 
 public class ReadResult {
 
-
     private String text;
 
     ReadResult(String text) {

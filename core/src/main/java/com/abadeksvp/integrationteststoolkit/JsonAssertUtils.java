@@ -6,27 +6,15 @@ import org.skyscreamer.jsonassert.Customization;
 import org.skyscreamer.jsonassert.JSONCompareMode;
 import org.skyscreamer.jsonassert.comparator.CustomComparator;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
-
-import lombok.SneakyThrows;
-
 public class JsonAssertUtils {
 
-    private static final ObjectMapper objectMapper = new ObjectMapper();
-
-    static {
-        objectMapper.configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, false);
-        objectMapper.registerModule(new JavaTimeModule());
-    }
-
-    @SneakyThrows
-    public static JsonNode extractField(String json, String path) {
-        return objectMapper.readTree(json).at(path);
-    }
-
+    /**
+     * Creates a CustomComparator with specified compare mode and fields to ignore during comparison.
+     *
+     * @param compareMode    The compare mode to use during comparison.
+     * @param ignoredFields  The fields to ignore during comparison.
+     * @return The CustomComparator object with specified compare mode and ignored fields.
+     */
     public static CustomComparator withCompareRules(JSONCompareMode compareMode, String... ignoredFields) {
         Customization[] customizations = Arrays.stream(ignoredFields)
                 .map(field -> new Customization(field, (o1, o2) -> true))
