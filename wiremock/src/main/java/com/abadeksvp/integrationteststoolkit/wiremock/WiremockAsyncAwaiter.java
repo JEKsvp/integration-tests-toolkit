@@ -8,12 +8,13 @@ import java.util.concurrent.TimeUnit;
 import com.github.tomakehurst.wiremock.client.VerificationException;
 
 import lombok.Getter;
+import wiremock.com.jayway.jsonpath.internal.JsonFormatter;
 
 /**
- * Synchronizer for verification of asynchronous calls to wiremock, works in pair with {@link AsyncAwaiterPostServeAction}<br>
- * Usage example:
+ * Synchronizer for verification of asynchronous calls to wiremock, works in pair with
+ * {@link AsyncAwaiterPostServeAction}<br> Usage example:
  * <code>
- *     <pre>
+ * <pre>
  *    WiremockAsyncAwaiter awaiter = new WiremockAsyncAwaiter(1);
  *    WireMock.stubFor(
  *        WireMock.post(WireMock.urlEqualTo("/scope/notifications/v1/cards/approved/transaction"))
@@ -25,6 +26,7 @@ import lombok.Getter;
  *    WireMockUtils.verifyRequest(...
  *      </pre>
  * </code>
+ *
  * @see AsyncAwaiterPostServeAction
  */
 public class WiremockAsyncAwaiter {
@@ -53,16 +55,16 @@ public class WiremockAsyncAwaiter {
         boolean wasUnlocked = this.latch.await(timeout, unit);
         if (!wasUnlocked) {
             throw new VerificationException(
-                    String.format("Not all async requests were called." +
-                                    " Expected calls: %s, actual calls: %s, accepted requests:\n %s",
-                            initCount, initCount - latch.getCount(), buildAcceptedRequestsLog()));
+                    String.format("Not all async requests were called.\n" +
+                                    "Expected requests count: %s\nActual requests count: %s\nReceived requests:\n%s",
+                            initCount, initCount - latch.getCount(), buildReceivedRequestsLog()));
         }
     }
 
-    private String buildAcceptedRequestsLog() {
+    private String buildReceivedRequestsLog() {
         return this.acceptedRequests.stream()
-                .map(request -> String.format("URL: %s,\n Body: %s\n",
-                        request.getUrl(), request.getBody()))
+                .map(request -> String.format("URL: %s,\nBody:\n%s\n", request.getUrl(),
+                        JsonFormatter.prettyPrint(request.getBody())))
                 .reduce((r1, r2) -> r1 + "----------------\n" + r2)
                 .orElse("NONE");
     }

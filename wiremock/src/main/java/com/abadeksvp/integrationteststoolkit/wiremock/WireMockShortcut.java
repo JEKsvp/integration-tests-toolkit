@@ -16,6 +16,7 @@ import com.github.tomakehurst.wiremock.http.HttpHeaders;
 import com.github.tomakehurst.wiremock.http.RequestMethod;
 import com.github.tomakehurst.wiremock.matching.RequestPatternBuilder;
 import com.github.tomakehurst.wiremock.matching.UrlPattern;
+import com.github.tomakehurst.wiremock.stubbing.StubMapping;
 import com.github.tomakehurst.wiremock.verification.LoggedRequest;
 
 import lombok.Setter;
@@ -35,16 +36,16 @@ public class WireMockShortcut {
     @Setter
     private HttpHeaders defaultHeaders = new HttpHeaders();
 
-    public void createEmptyStub(RequestMethod httpMethod, UrlPattern urlPattern) {
-        WireMock.stubFor(WireMock.request(httpMethod.getName(), urlPattern)
+    public StubMapping createEmptyStub(RequestMethod httpMethod, UrlPattern urlPattern) {
+        return WireMock.stubFor(WireMock.request(httpMethod.getName(), urlPattern)
                 .willReturn(responseDefinition()
                         .withHeaders(defaultHeaders)
                         .withStatus(200)
                 ));
     }
 
-    public void createStub(RequestMethod httpMethod, UrlPattern urlPattern, String responseBody) {
-        WireMock.stubFor(WireMock.request(httpMethod.getName(), urlPattern)
+    public StubMapping createStub(RequestMethod httpMethod, UrlPattern urlPattern, String responseBody) {
+        return WireMock.stubFor(WireMock.request(httpMethod.getName(), urlPattern)
                 .willReturn(responseDefinition()
                         .withHeaders(defaultHeaders)
                         .withStatus(200)
@@ -52,8 +53,8 @@ public class WireMockShortcut {
                 ));
     }
 
-    public void createStubFromResource(RequestMethod httpMethod, UrlPattern urlPattern, String resourceName) {
-        WireMock.stubFor(WireMock.request(httpMethod.getName(), urlPattern)
+    public StubMapping createStubFromResource(RequestMethod httpMethod, UrlPattern urlPattern, String resourceName) {
+        return WireMock.stubFor(WireMock.request(httpMethod.getName(), urlPattern)
                 .willReturn(responseDefinition()
                         .withHeaders(defaultHeaders)
                         .withStatus(200)
