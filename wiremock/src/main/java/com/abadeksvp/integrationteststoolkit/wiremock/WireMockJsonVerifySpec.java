@@ -1,12 +1,15 @@
 package com.abadeksvp.integrationteststoolkit.wiremock;
 
 import java.time.Duration;
+import java.util.HashMap;
+import java.util.Map;
 
 import org.skyscreamer.jsonassert.JSONCompareMode;
 import org.skyscreamer.jsonassert.comparator.CustomComparator;
 
 import com.github.tomakehurst.wiremock.client.CountMatchingStrategy;
 import com.github.tomakehurst.wiremock.http.RequestMethod;
+import com.github.tomakehurst.wiremock.matching.StringValuePattern;
 import com.github.tomakehurst.wiremock.matching.UrlPattern;
 
 import lombok.AccessLevel;
@@ -22,20 +25,14 @@ import lombok.ToString;
 @Setter(AccessLevel.PRIVATE)
 public class WireMockJsonVerifySpec {
 
-    @Builder.Default
     private CountMatchingStrategy numberOfInteractions = new CountMatchingStrategy(CountMatchingStrategy.EQUAL_TO, 1);
-
     private RequestMethod httpMethod;
     private UrlPattern urlPattern;
-
-    @Builder.Default
     private CustomComparator customComparator = new CustomComparator(JSONCompareMode.STRICT);
-
-    private String expectedResponse;
+    private String expectedRequest;
     private String expectedResourceName;
-
-    @Builder.Default
-    private Duration waitDuration = Duration.ofSeconds(10);
+    private Duration waitDuration;
+    private Map<String, StringValuePattern> headers = new HashMap<>();
 
     private WireMockJsonVerifySpec() {
     }
@@ -52,12 +49,12 @@ public class WireMockJsonVerifySpec {
         return this;
     }
 
-    public WireMockJsonVerifySpec withResponse(String expectedResponse) {
-        this.expectedResponse = expectedResponse;
+    public WireMockJsonVerifySpec withRequest(String expectedResponse) {
+        this.expectedRequest = expectedResponse;
         return this;
     }
 
-    public WireMockJsonVerifySpec withResponseFromResource(String expectedResourceName) {
+    public WireMockJsonVerifySpec withRequestFromResource(String expectedResourceName) {
         this.expectedResourceName = expectedResourceName;
         return this;
     }
@@ -69,6 +66,11 @@ public class WireMockJsonVerifySpec {
 
     public WireMockJsonVerifySpec withCustomComparator(CustomComparator jsonCompareMode) {
         this.customComparator = jsonCompareMode;
+        return this;
+    }
+
+    public WireMockJsonVerifySpec withHeader(String headerName, StringValuePattern headerValue) {
+        this.headers.put(headerName, headerValue);
         return this;
     }
 }

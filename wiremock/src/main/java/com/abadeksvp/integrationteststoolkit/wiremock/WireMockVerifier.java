@@ -2,6 +2,7 @@ package com.abadeksvp.integrationteststoolkit.wiremock;
 
 import java.util.List;
 
+import org.apache.commons.lang3.StringUtils;
 import org.awaitility.Awaitility;
 import org.json.JSONException;
 import org.skyscreamer.jsonassert.JSONCompare;
@@ -67,25 +68,28 @@ public class WireMockVerifier {
     private String defineExpectedResponse(WireMockJsonVerifySpec spec) {
         if (spec.getExpectedResourceName() != null) {
             return resourceReader.readString(spec.getExpectedResourceName());
-        } else if (spec.getExpectedResponse() != null) {
-            return spec.getExpectedResponse();
+        } else if (spec.getExpectedRequest() != null) {
+            return spec.getExpectedRequest();
         }
         return null;
     }
 
-    private void verifyResponseBody(WireMockJsonVerifySpec spec, String expectedResponse, List<LoggedRequest> requests,
+    private void verifyResponseBody(WireMockJsonVerifySpec spec, String expectedRequest, List<LoggedRequest> requests,
             RequestPatternBuilder requestPatternBuilder) throws JSONException {
         int actualMatched = 0;
         for (LoggedRequest request : requests) {
-            String requestBody = request.getBodyAsString();
-            JSONCompareResult result = JSONCompare.compareJSON(expectedResponse, requestBody,
+            String actualRequest = request.getBodyAsString();
+            if (StringUtils.isEmpty(actualRequest)) {
+                continue;
+            }
+            JSONCompareResult result = JSONCompare.compareJSON(expectedRequest, actualRequest,
                     spec.getCustomComparator());
             if (result.passed()) {
                 actualMatched++;
             }
         }
         if (!spec.getNumberOfInteractions().match(actualMatched)) {
-            throw buildCountValidationException(spec, expectedResponse, requestPatternBuilder, actualMatched);
+            throw buildCountValidationException(spec, expectedRequest, requestPatternBuilder, actualMatched);
         }
     }
 
@@ -98,10 +102,10 @@ public class WireMockVerifier {
     }
 
     private VerificationException buildCountValidationException(WireMockJsonVerifySpec spec,
-            String expectedResponse, RequestPatternBuilder requestPatternBuilder, int actualCount) {
+            String expectedRequest, RequestPatternBuilder requestPatternBuilder, int actualCount) {
         RequestPattern requestPattern = requestPatternBuilder.build();
         return actualCount == 0
-                ? verificationExceptionForNearMisses(requestPatternBuilder, expectedResponse)
+                ? verificationExceptionForNearMisses(requestPatternBuilder, expectedRequest)
                 : new VerificationException(requestPattern, spec.getNumberOfInteractions(), actualCount);
     }
 
@@ -117,8 +121,8 @@ public class WireMockVerifier {
     }
 
     private VerificationException verificationExceptionForNearMisses(RequestPatternBuilder requestPatternBuilder,
-            String expectedResponse) {
-        RequestPattern requestPattern = requestPatternBuilder.withRequestBody(WireMock.equalTo(expectedResponse))
+            String expectedRequest) {
+        RequestPattern requestPattern = requestPatternBuilder.withRequestBody(WireMock.equalTo(expectedRequest))
                 .build();
         List<NearMiss> nearMisses = WireMock.findNearMissesFor(requestPatternBuilder);
         if (nearMisses.size() > 0) {
@@ -130,26 +134,30 @@ public class WireMockVerifier {
     }
 
     private static RequestPatternBuilder defineRequestPattern(WireMockJsonVerifySpec spec) {
+        RequestPatternBuilder patternBuilder;
         if (spec.getHttpMethod().equals(GET)) {
-            return WireMock.getRequestedFor(spec.getUrlPattern());
+            patternBuilder = WireMock.getRequestedFor(spec.getUrlPattern());
         } else if (spec.getHttpMethod().equals(POST)) {
-            return WireMock.postRequestedFor(spec.getUrlPattern());
+            patternBuilder = WireMock.postRequestedFor(spec.getUrlPattern());
         } else if (spec.getHttpMethod().equals(PATCH)) {
-            return WireMock.patchRequestedFor(spec.getUrlPattern());
+            patternBuilder = WireMock.patchRequestedFor(spec.getUrlPattern());
         } else if (spec.getHttpMethod().equals(PUT)) {
-            return WireMock.putRequestedFor(spec.getUrlPattern());
+            patternBuilder = WireMock.putRequestedFor(spec.getUrlPattern());
         } else if (spec.getHttpMethod().equals(DELETE)) {
-            return WireMock.deleteRequestedFor(spec.getUrlPattern());
+            patternBuilder = WireMock.deleteRequestedFor(spec.getUrlPattern());
         } else if (spec.getHttpMethod().equals(RequestMethod.HEAD)) {
-            return WireMock.headRequestedFor(spec.getUrlPattern());
+            patternBuilder = WireMock.headRequestedFor(spec.getUrlPattern());
         } else if (spec.getHttpMethod().equals(RequestMethod.OPTIONS)) {
-            return WireMock.optionsRequestedFor(spec.getUrlPattern());
+            patternBuilder = WireMock.optionsRequestedFor(spec.getUrlPattern());
         } else if (spec.getHttpMethod().equals(RequestMethod.TRACE)) {
-            return WireMock.traceRequestedFor(spec.getUrlPattern());
+            patternBuilder = WireMock.traceRequestedFor(spec.getUrlPattern());
         } else if (spec.getHttpMethod().equals(RequestMethod.ANY)) {
-            return WireMock.anyRequestedFor(spec.getUrlPattern());
+            patternBuilder = WireMock.anyRequestedFor(spec.getUrlPattern());
         } else {
             throw new IllegalArgumentException("Unsupported HTTP method: " + spec.getHttpMethod());
         }
+
+        spec.getHeaders().forEach(patternBuilder::withHeader);
+        return patternBuilder;
     }
 }
