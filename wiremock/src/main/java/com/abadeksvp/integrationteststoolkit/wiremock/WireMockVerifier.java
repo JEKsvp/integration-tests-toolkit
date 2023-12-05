@@ -1,15 +1,10 @@
 package com.abadeksvp.integrationteststoolkit.wiremock;
 
 import java.util.List;
-import java.util.Map;
 
 import org.awaitility.Awaitility;
 
-import com.abadeksvp.integrationteststoolkit.resource.ClasspathResourceReader;
-import com.abadeksvp.integrationteststoolkit.resource.ResourceReader;
-import com.abadeksvp.integrationteststoolkit.wiremock.verifier.JsonBodyVerifier;
 import com.abadeksvp.integrationteststoolkit.wiremock.verifier.RequestBodyVerifier;
-import com.abadeksvp.integrationteststoolkit.wiremock.verifier.TextBodyVerifier;
 import com.github.tomakehurst.wiremock.client.VerificationException;
 import com.github.tomakehurst.wiremock.client.WireMock;
 import com.github.tomakehurst.wiremock.http.RequestMethod;
@@ -30,34 +25,18 @@ import static com.github.tomakehurst.wiremock.matching.RequestPatternBuilder.all
 
 public class WireMockVerifier {
 
-    private final ResourceReader resourceReader;
-    private final Map<RequestBodyType, RequestBodyVerifier> requestBodyVerifiers;
-
-    public WireMockVerifier() {
-        this(new ClasspathResourceReader());
-    }
-
-    public WireMockVerifier(ResourceReader resourceReader) {
-        this.resourceReader = resourceReader;
-        this.requestBodyVerifiers = Map.of(
-                RequestBodyType.JSON, new JsonBodyVerifier(resourceReader),
-                RequestBodyType.XML, new TextBodyVerifier(resourceReader), //todo implement XML verifier
-                RequestBodyType.TEXT, new TextBodyVerifier(resourceReader)
-        );
-    }
-
-    public void verify(WireMockJsonVerifySpec spec) {
+    public static void verify(WireMockJsonVerifySpec spec) {
         if (spec.getWaitDuration() != null) {
-            Awaitility.await().atMost(spec.getWaitDuration()).untilAsserted(() -> {
-                verifyInternal(spec);
-            });
+            Awaitility.await()
+                    .atMost(spec.getWaitDuration())
+                    .untilAsserted(() -> verifyInternal(spec));
         } else {
             verifyInternal(spec);
         }
     }
 
     @SneakyThrows
-    private void verifyInternal(WireMockJsonVerifySpec spec) {
+    private static void verifyInternal(WireMockJsonVerifySpec spec) {
         RequestPatternBuilder requestPatternBuilder = defineRequestPattern(spec);
 
         List<LoggedRequest> requests = WireMock.findAll(requestPatternBuilder);
@@ -65,23 +44,14 @@ public class WireMockVerifier {
             throw buildCountValidationException(spec, requestPatternBuilder, requests.size());
         }
 
-        RequestBodyVerifier bodyVerifier = requestBodyVerifiers.get(spec.getRequestBodyType());
-        if (bodyVerifier == null) {
-            throw new IllegalArgumentException("Unsupported request body type: " + spec.getRequestBodyType());
+
+        RequestBodyVerifier bodyVerifier = spec.getRequestBodyVerifier();
+        if (bodyVerifier != null) {
+            bodyVerifier.verify(spec, requests, requestPatternBuilder);
         }
-        bodyVerifier.verifyRequestBody(spec, requests, requestPatternBuilder);
     }
 
-    private String defineExpectedResponse(WireMockJsonVerifySpec spec) {
-        if (spec.getExpectedResourceName() != null) {
-            return resourceReader.readString(spec.getExpectedResourceName());
-        } else if (spec.getExpectedRequest() != null) {
-            return spec.getExpectedRequest();
-        }
-        return null;
-    }
-
-    private VerificationException buildCountValidationException(WireMockJsonVerifySpec spec,
+    private static VerificationException buildCountValidationException(WireMockJsonVerifySpec spec,
             RequestPatternBuilder requestPatternBuilder, int actualCount) {
         RequestPattern requestPattern = requestPatternBuilder.build();
         return actualCount == 0
@@ -89,7 +59,8 @@ public class WireMockVerifier {
                 : new VerificationException(requestPattern, spec.getNumberOfInteractions(), actualCount);
     }
 
-    private VerificationException verificationExceptionForNearMisses(RequestPatternBuilder requestPatternBuilder) {
+    private static VerificationException verificationExceptionForNearMisses(
+            RequestPatternBuilder requestPatternBuilder) {
         RequestPattern requestPattern = requestPatternBuilder.build();
         List<NearMiss> nearMisses = WireMock.findNearMissesFor(requestPatternBuilder);
         if (nearMisses.size() > 0) {

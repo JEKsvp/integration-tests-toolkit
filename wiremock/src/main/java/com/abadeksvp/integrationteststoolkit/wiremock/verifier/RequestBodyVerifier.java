@@ -8,6 +8,5 @@ import com.github.tomakehurst.wiremock.verification.LoggedRequest;
 
 public interface RequestBodyVerifier {
 
-    void verifyRequestBody(WireMockJsonVerifySpec spec, List<LoggedRequest> requests,
-            RequestPatternBuilder requestPatternBuilder);
+    void verify(WireMockJsonVerifySpec spec, List<LoggedRequest> requests, RequestPatternBuilder requestPatternBuilder);
 }

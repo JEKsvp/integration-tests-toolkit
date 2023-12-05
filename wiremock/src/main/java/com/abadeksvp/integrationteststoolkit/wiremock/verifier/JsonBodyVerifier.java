@@ -3,10 +3,12 @@ package com.abadeksvp.integrationteststoolkit.wiremock.verifier;
 import java.util.List;
 
 import org.apache.commons.lang3.StringUtils;
+import org.json.JSONException;
 import org.skyscreamer.jsonassert.JSONCompare;
 import org.skyscreamer.jsonassert.JSONCompareResult;
+import org.skyscreamer.jsonassert.JSONParser;
+import org.skyscreamer.jsonassert.comparator.CustomComparator;
 
-import com.abadeksvp.integrationteststoolkit.resource.ResourceReader;
 import com.abadeksvp.integrationteststoolkit.wiremock.WireMockJsonVerifySpec;
 import com.github.tomakehurst.wiremock.client.VerificationException;
 import com.github.tomakehurst.wiremock.client.WireMock;
@@ -16,23 +18,27 @@ import com.github.tomakehurst.wiremock.verification.LoggedRequest;
 import com.github.tomakehurst.wiremock.verification.NearMiss;
 import com.github.tomakehurst.wiremock.verification.diff.Diff;
 
+import lombok.Getter;
 import lombok.SneakyThrows;
 
 import static com.github.tomakehurst.wiremock.matching.RequestPatternBuilder.allRequests;
 
 public class JsonBodyVerifier implements RequestBodyVerifier {
 
-    private final ResourceReader resourceReader;
+    @Getter
+    private final String content;
+    private final CustomComparator customComparator;
 
-    public JsonBodyVerifier(ResourceReader resourceReader) {
-        this.resourceReader = resourceReader;
+    public JsonBodyVerifier(String content, CustomComparator customComparator) {
+        this.content = content;
+        this.customComparator = customComparator;
     }
 
     @Override
     @SneakyThrows
-    public void verifyRequestBody(WireMockJsonVerifySpec spec, List<LoggedRequest> requests,
+    public void verify(WireMockJsonVerifySpec spec, List<LoggedRequest> requests,
             RequestPatternBuilder requestPatternBuilder) {
-        String expectedRequest = defineExpectedResponse(spec);
+        String expectedRequest = content;
         if (expectedRequest == null) {
             return;
         }
@@ -42,8 +48,10 @@ public class JsonBodyVerifier implements RequestBodyVerifier {
             if (StringUtils.isEmpty(actualRequest)) {
                 continue;
             }
-            JSONCompareResult result = JSONCompare.compareJSON(expectedRequest, actualRequest,
-                    spec.getCustomComparator());
+            if (!isJson(actualRequest) || !isJson(expectedRequest)) {
+                continue;
+            }
+            JSONCompareResult result = JSONCompare.compareJSON(expectedRequest, actualRequest, this.customComparator);
             if (result.passed()) {
                 actualMatched++;
             }
@@ -53,13 +61,13 @@ public class JsonBodyVerifier implements RequestBodyVerifier {
         }
     }
 
-    private String defineExpectedResponse(WireMockJsonVerifySpec spec) {
-        if (spec.getExpectedResourceName() != null) {
-            return resourceReader.readString(spec.getExpectedResourceName());
-        } else if (spec.getExpectedRequest() != null) {
-            return spec.getExpectedRequest();
+    private boolean isJson(String content) {
+        try {
+            JSONParser.parseJSON(content);
+            return true;
+        } catch (JSONException e) {
+            return false;
         }
-        return null;
     }
 
     private VerificationException buildCountValidationException(WireMockJsonVerifySpec spec,

@@ -7,10 +7,14 @@ import java.util.Map;
 import org.skyscreamer.jsonassert.JSONCompareMode;
 import org.skyscreamer.jsonassert.comparator.CustomComparator;
 
+import com.abadeksvp.integrationteststoolkit.wiremock.verifier.JsonBodyVerifier;
+import com.abadeksvp.integrationteststoolkit.wiremock.verifier.RequestBodyVerifier;
+import com.abadeksvp.integrationteststoolkit.wiremock.verifier.TextBodyVerifier;
+import com.abadeksvp.integrationteststoolkit.wiremock.verifier.XmlBodyVerifier;
 import com.github.tomakehurst.wiremock.client.CountMatchingStrategy;
-import com.github.tomakehurst.wiremock.client.WireMock;
 import com.github.tomakehurst.wiremock.http.RequestMethod;
 import com.github.tomakehurst.wiremock.matching.ContentPattern;
+import com.github.tomakehurst.wiremock.matching.EqualToXmlPattern;
 import com.github.tomakehurst.wiremock.matching.StringValuePattern;
 import com.github.tomakehurst.wiremock.matching.UrlPattern;
 
@@ -30,10 +34,7 @@ public class WireMockJsonVerifySpec {
     private RequestMethod httpMethod;
     private UrlPattern urlPattern;
     private Map<String, StringValuePattern> headers = new HashMap<>();
-    private CustomComparator customComparator = new CustomComparator(JSONCompareMode.STRICT);
-    private RequestBodyType requestBodyType = RequestBodyType.JSON;
-    private String expectedRequest;
-    private String expectedResourceName;
+    private RequestBodyVerifier requestBodyVerifier;
     private Duration waitDuration;
 
     private WireMockJsonVerifySpec() {
@@ -46,27 +47,8 @@ public class WireMockJsonVerifySpec {
         return spec;
     }
 
-    public static WireMockJsonVerifySpec requestedFor(RequestMethod httpMethod, UrlPattern urlPattern,
-            RequestBodyType bodyType) {
-        WireMockJsonVerifySpec spec = new WireMockJsonVerifySpec();
-        spec.setHttpMethod(httpMethod);
-        spec.setUrlPattern(urlPattern);
-        spec.setRequestBodyType(bodyType);
-        return spec;
-    }
-
-    public WireMockJsonVerifySpec withNumberOfInteractions(CountMatchingStrategy numberOfInteratcions) {
-        this.numberOfInteractions = numberOfInteratcions;
-        return this;
-    }
-
-    public WireMockJsonVerifySpec withRequest(String expectedResponse) {
-        this.expectedRequest = expectedResponse;
-        return this;
-    }
-
-    public WireMockJsonVerifySpec withRequestFromResource(String expectedResourceName) {
-        this.expectedResourceName = expectedResourceName;
+    public WireMockJsonVerifySpec withNumberOfInteractions(CountMatchingStrategy numberOfInteractions) {
+        this.numberOfInteractions = numberOfInteractions;
         return this;
     }
 
@@ -75,18 +57,33 @@ public class WireMockJsonVerifySpec {
         return this;
     }
 
-    public WireMockJsonVerifySpec withCustomComparator(CustomComparator jsonCompareMode) {
-        this.customComparator = jsonCompareMode;
-        return this;
-    }
-
     public WireMockJsonVerifySpec withHeader(String headerName, StringValuePattern headerValue) {
         this.headers.put(headerName, headerValue);
         return this;
     }
 
-    public WireMockJsonVerifySpec withRequestBodyType(RequestBodyType requestBodyType) {
-        this.requestBodyType = requestBodyType;
+    public WireMockJsonVerifySpec withJsonBody(String content) {
+        this.requestBodyVerifier = new JsonBodyVerifier(content, new CustomComparator(JSONCompareMode.STRICT));
+        return this;
+    }
+
+    public WireMockJsonVerifySpec withJsonBody(String content, CustomComparator customComparator) {
+        this.requestBodyVerifier = new JsonBodyVerifier(content, customComparator);
+        return this;
+    }
+
+    public WireMockJsonVerifySpec withTextBody(ContentPattern contentPattern) {
+        this.requestBodyVerifier = new TextBodyVerifier(contentPattern);
+        return this;
+    }
+
+    public WireMockJsonVerifySpec withXmlBody(EqualToXmlPattern xmlPattern) {
+        this.requestBodyVerifier = new XmlBodyVerifier(xmlPattern);
+        return this;
+    }
+
+    public WireMockJsonVerifySpec withCustomBody(RequestBodyVerifier requestBodyVerifier) {
+        this.requestBodyVerifier = requestBodyVerifier;
         return this;
     }
 }

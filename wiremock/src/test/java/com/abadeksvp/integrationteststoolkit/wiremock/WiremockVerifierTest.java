@@ -11,6 +11,8 @@ import org.springframework.cloud.contract.wiremock.AutoConfigureWireMock;
 import org.springframework.web.client.RestTemplate;
 
 import com.abadeksvp.integrationteststoolkit.JsonAssertUtils;
+import com.abadeksvp.integrationteststoolkit.resource.ClasspathResourceReader;
+import com.abadeksvp.integrationteststoolkit.resource.ResourceReader;
 import com.abadeksvp.integrationteststoolkit.wiremock.helpers.TestRunnerConfig;
 import com.github.tomakehurst.wiremock.client.VerificationException;
 import com.github.tomakehurst.wiremock.client.WireMock;
@@ -19,9 +21,11 @@ import com.github.tomakehurst.wiremock.http.RequestMethod;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import static com.abadeksvp.integrationteststoolkit.wiremock.WireMockVerifier.verify;
 import static com.github.tomakehurst.wiremock.client.ResponseDefinitionBuilder.okForJson;
 import static com.github.tomakehurst.wiremock.client.WireMock.equalTo;
 import static com.github.tomakehurst.wiremock.client.WireMock.exactly;
+import static com.github.tomakehurst.wiremock.client.WireMock.ok;
 import static com.github.tomakehurst.wiremock.client.WireMock.post;
 import static com.github.tomakehurst.wiremock.client.WireMock.stubFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo;
@@ -33,13 +37,13 @@ public class WiremockVerifierTest {
     @Value("${wiremock.server.port}")
     private int wiremockPort;
 
-    private WireMockVerifier verifier;
+    private ResourceReader resourceReader;
 
     @BeforeEach
     void setUp() {
         WireMock.resetAllRequests();
         WireMock.resetAllScenarios();
-        verifier = new WireMockVerifier();
+        resourceReader = new ClasspathResourceReader();
     }
 
     @Test
@@ -57,7 +61,7 @@ public class WiremockVerifierTest {
         restTemplate.getForEntity("http://localhost:" + wiremockPort + "/test",
                 String.class);
 
-        verifier.verify(WireMockJsonVerifySpec.requestedFor(RequestMethod.GET, urlEqualTo("/test"))
+        verify(WireMockJsonVerifySpec.requestedFor(RequestMethod.GET, urlEqualTo("/test"))
                 .withNumberOfInteractions(exactly(1))
         );
     }
@@ -77,9 +81,9 @@ public class WiremockVerifierTest {
         restTemplate.getForEntity("http://localhost:" + wiremockPort + "/test", String.class);
 
         assertThrows(VerificationException.class,
-                () -> verifier.verify(WireMockJsonVerifySpec.requestedFor(RequestMethod.GET, urlEqualTo("/test"))
+                () -> verify(WireMockJsonVerifySpec.requestedFor(RequestMethod.GET, urlEqualTo("/test"))
                         .withNumberOfInteractions(exactly(1))
-                        .withRequest("""
+                        .withJsonBody("""
                                 {
                                     "test": "test"
                                 }
@@ -102,9 +106,9 @@ public class WiremockVerifierTest {
         restTemplate.getForEntity("http://localhost:" + wiremockPort + "/test", String.class);
 
         assertThrows(VerificationException.class,
-                () -> verifier.verify(WireMockJsonVerifySpec.requestedFor(RequestMethod.GET, urlEqualTo("/test"))
+                () -> verify(WireMockJsonVerifySpec.requestedFor(RequestMethod.GET, urlEqualTo("/test"))
                         .withNumberOfInteractions(exactly(1))
-                        .withRequestFromResource("/test-request-body.json")
+                        .withJsonBody(resourceReader.readString("/test-request-body.json"))
                 ));
     }
 
@@ -123,13 +127,13 @@ public class WiremockVerifierTest {
                 .defaultHeader("Test-Header", "test")
                 .build();
         restTemplate.getForEntity("http://localhost:" + wiremockPort + "/test", String.class);
-        verifier.verify(WireMockJsonVerifySpec.requestedFor(RequestMethod.GET, urlEqualTo("/test"))
+        verify(WireMockJsonVerifySpec.requestedFor(RequestMethod.GET, urlEqualTo("/test"))
                 .withNumberOfInteractions(exactly(1))
                 .withHeader("Test-Header", equalTo("test"))
         );
 
         assertThatThrownBy(
-                () -> verifier.verify(WireMockJsonVerifySpec.requestedFor(RequestMethod.GET, urlEqualTo("/test"))
+                () -> verify(WireMockJsonVerifySpec.requestedFor(RequestMethod.GET, urlEqualTo("/test"))
                         .withNumberOfInteractions(exactly(1))
                         .withHeader("Test-Header", equalTo("test2"))))
                 .isInstanceOf(VerificationException.class)
@@ -170,24 +174,23 @@ public class WiremockVerifierTest {
                     "key4": "key4"
                 }
                 """, String.class);
-        verifier.verify(WireMockJsonVerifySpec.requestedFor(RequestMethod.POST, urlEqualTo("/test"))
+        verify(WireMockJsonVerifySpec.requestedFor(RequestMethod.POST, urlEqualTo("/test"))
                 .withNumberOfInteractions(exactly(1))
-                .withRequest("""
-                        {
-                            "key1": "key1",
-                            "key2": "key2",
-                            "key3": "key3",
-                            "key4": "key4"
-                        }
-                        """)
-                .withCustomComparator(JsonAssertUtils.withCompareRules(JSONCompareMode.STRICT,
-                        "key2"))
+                .withJsonBody("""
+                                {
+                                    "key1": "key1",
+                                    "key2": "key2",
+                                    "key3": "key3",
+                                    "key4": "key4"
+                                }
+                                """,
+                        JsonAssertUtils.withCompareRules(JSONCompareMode.STRICT, "key2"))
         );
 
         assertThatThrownBy(
-                () -> verifier.verify(WireMockJsonVerifySpec.requestedFor(RequestMethod.POST, urlEqualTo("/test"))
+                () -> verify(WireMockJsonVerifySpec.requestedFor(RequestMethod.POST, urlEqualTo("/test"))
                         .withNumberOfInteractions(exactly(1))
-                        .withRequest("""
+                        .withJsonBody("""
                                 {
                                     "key1": "key1",
                                     "key2": "key2",
@@ -225,23 +228,21 @@ public class WiremockVerifierTest {
     @DisplayName("POST request with verification of non-json body")
     void verifyPostRequestWithNonJsonBody() {
         stubFor(post("/test")
-                .willReturn(okForJson("Test non-json response"))
+                .willReturn(ok("Test non-json response"))
         );
 
         RestTemplate restTemplate = new RestTemplateBuilder().build();
         restTemplate.postForEntity("http://localhost:" + wiremockPort + "/test", "Non-json request.", String.class);
-        verifier.verify(
-                WireMockJsonVerifySpec.requestedFor(RequestMethod.POST, urlEqualTo("/test"), RequestBodyType.TEXT)
+        verify(
+                WireMockJsonVerifySpec.requestedFor(RequestMethod.POST, urlEqualTo("/test"))
                         .withNumberOfInteractions(exactly(1))
-                        .withRequest("Non-json request.")
+                        .withTextBody(equalTo("Non-json request."))
         );
 
         assertThatThrownBy(
-                () -> verifier.verify(
-                        WireMockJsonVerifySpec.requestedFor(RequestMethod.POST, urlEqualTo("/test"),
-                                        RequestBodyType.TEXT)
-                                .withNumberOfInteractions(exactly(1))
-                                .withRequest("Non-json request2.")
+                () -> verify(WireMockJsonVerifySpec.requestedFor(RequestMethod.POST, urlEqualTo("/test"))
+                        .withNumberOfInteractions(exactly(1))
+                        .withTextBody(equalTo("Non-json request2."))
                 ))
                 .isInstanceOf(VerificationException.class)
                 .hasMessage("""
@@ -253,6 +254,42 @@ public class WiremockVerifierTest {
                         POST
                         /test
 
+                        Non-json request.>"""
+                );
+    }
+
+    @Test
+    @DisplayName("POST request with verification of json body when the requested body is not json")
+    void verifyPostRequestWithJsonBodyWhenRequestedBodyIsNotJson() {
+        stubFor(post("/test")
+                .willReturn(ok("Test non-json response"))
+        );
+
+        RestTemplate restTemplate = new RestTemplateBuilder().build();
+        restTemplate.postForEntity("http://localhost:" + wiremockPort + "/test", "Non-json request.", String.class);
+
+        assertThatThrownBy(
+                () -> verify(WireMockJsonVerifySpec.requestedFor(RequestMethod.POST, urlEqualTo("/test"))
+                        .withNumberOfInteractions(exactly(1))
+                        .withJsonBody("""
+                                {
+                                    "key1": "val1"
+                                }
+                                """)
+                ))
+                .isInstanceOf(VerificationException.class)
+                .hasMessage("""
+                        No requests exactly matched. Most similar request was:  expected:<
+                        POST
+                        /test
+                                                
+                        {
+                            "key1": "val1"
+                        }
+                        > but was:<
+                        POST
+                        /test
+                                                
                         Non-json request.>"""
                 );
     }
