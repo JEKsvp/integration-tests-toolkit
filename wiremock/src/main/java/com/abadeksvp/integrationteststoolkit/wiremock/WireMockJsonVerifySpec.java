@@ -8,12 +8,13 @@ import org.skyscreamer.jsonassert.JSONCompareMode;
 import org.skyscreamer.jsonassert.comparator.CustomComparator;
 
 import com.github.tomakehurst.wiremock.client.CountMatchingStrategy;
+import com.github.tomakehurst.wiremock.client.WireMock;
 import com.github.tomakehurst.wiremock.http.RequestMethod;
+import com.github.tomakehurst.wiremock.matching.ContentPattern;
 import com.github.tomakehurst.wiremock.matching.StringValuePattern;
 import com.github.tomakehurst.wiremock.matching.UrlPattern;
 
 import lombok.AccessLevel;
-import lombok.Builder;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.Setter;
@@ -28,19 +29,29 @@ public class WireMockJsonVerifySpec {
     private CountMatchingStrategy numberOfInteractions = new CountMatchingStrategy(CountMatchingStrategy.EQUAL_TO, 1);
     private RequestMethod httpMethod;
     private UrlPattern urlPattern;
+    private Map<String, StringValuePattern> headers = new HashMap<>();
     private CustomComparator customComparator = new CustomComparator(JSONCompareMode.STRICT);
+    private RequestBodyType requestBodyType = RequestBodyType.JSON;
     private String expectedRequest;
     private String expectedResourceName;
     private Duration waitDuration;
-    private Map<String, StringValuePattern> headers = new HashMap<>();
 
     private WireMockJsonVerifySpec() {
     }
 
-    public static WireMockJsonVerifySpec create(RequestMethod httpMethod, UrlPattern urlPattern) {
+    public static WireMockJsonVerifySpec requestedFor(RequestMethod httpMethod, UrlPattern urlPattern) {
         WireMockJsonVerifySpec spec = new WireMockJsonVerifySpec();
         spec.setHttpMethod(httpMethod);
         spec.setUrlPattern(urlPattern);
+        return spec;
+    }
+
+    public static WireMockJsonVerifySpec requestedFor(RequestMethod httpMethod, UrlPattern urlPattern,
+            RequestBodyType bodyType) {
+        WireMockJsonVerifySpec spec = new WireMockJsonVerifySpec();
+        spec.setHttpMethod(httpMethod);
+        spec.setUrlPattern(urlPattern);
+        spec.setRequestBodyType(bodyType);
         return spec;
     }
 
@@ -71,6 +82,11 @@ public class WireMockJsonVerifySpec {
 
     public WireMockJsonVerifySpec withHeader(String headerName, StringValuePattern headerValue) {
         this.headers.put(headerName, headerValue);
+        return this;
+    }
+
+    public WireMockJsonVerifySpec withRequestBodyType(RequestBodyType requestBodyType) {
+        this.requestBodyType = requestBodyType;
         return this;
     }
 }

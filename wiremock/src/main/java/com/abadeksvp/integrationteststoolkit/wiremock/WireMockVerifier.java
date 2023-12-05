@@ -1,15 +1,15 @@
 package com.abadeksvp.integrationteststoolkit.wiremock;
 
 import java.util.List;
+import java.util.Map;
 
-import org.apache.commons.lang3.StringUtils;
 import org.awaitility.Awaitility;
-import org.json.JSONException;
-import org.skyscreamer.jsonassert.JSONCompare;
-import org.skyscreamer.jsonassert.JSONCompareResult;
 
 import com.abadeksvp.integrationteststoolkit.resource.ClasspathResourceReader;
 import com.abadeksvp.integrationteststoolkit.resource.ResourceReader;
+import com.abadeksvp.integrationteststoolkit.wiremock.verifier.JsonBodyVerifier;
+import com.abadeksvp.integrationteststoolkit.wiremock.verifier.RequestBodyVerifier;
+import com.abadeksvp.integrationteststoolkit.wiremock.verifier.TextBodyVerifier;
 import com.github.tomakehurst.wiremock.client.VerificationException;
 import com.github.tomakehurst.wiremock.client.WireMock;
 import com.github.tomakehurst.wiremock.http.RequestMethod;
@@ -31,13 +31,19 @@ import static com.github.tomakehurst.wiremock.matching.RequestPatternBuilder.all
 public class WireMockVerifier {
 
     private final ResourceReader resourceReader;
+    private final Map<RequestBodyType, RequestBodyVerifier> requestBodyVerifiers;
 
     public WireMockVerifier() {
-        this.resourceReader = new ClasspathResourceReader();
+        this(new ClasspathResourceReader());
     }
 
     public WireMockVerifier(ResourceReader resourceReader) {
         this.resourceReader = resourceReader;
+        this.requestBodyVerifiers = Map.of(
+                RequestBodyType.JSON, new JsonBodyVerifier(resourceReader),
+                RequestBodyType.XML, new TextBodyVerifier(resourceReader), //todo implement XML verifier
+                RequestBodyType.TEXT, new TextBodyVerifier(resourceReader)
+        );
     }
 
     public void verify(WireMockJsonVerifySpec spec) {
@@ -59,10 +65,11 @@ public class WireMockVerifier {
             throw buildCountValidationException(spec, requestPatternBuilder, requests.size());
         }
 
-        String expectedResponse = defineExpectedResponse(spec);
-        if (expectedResponse != null) {
-            verifyResponseBody(spec, expectedResponse, requests, requestPatternBuilder);
+        RequestBodyVerifier bodyVerifier = requestBodyVerifiers.get(spec.getRequestBodyType());
+        if (bodyVerifier == null) {
+            throw new IllegalArgumentException("Unsupported request body type: " + spec.getRequestBodyType());
         }
+        bodyVerifier.verifyRequestBody(spec, requests, requestPatternBuilder);
     }
 
     private String defineExpectedResponse(WireMockJsonVerifySpec spec) {
@@ -74,25 +81,6 @@ public class WireMockVerifier {
         return null;
     }
 
-    private void verifyResponseBody(WireMockJsonVerifySpec spec, String expectedRequest, List<LoggedRequest> requests,
-            RequestPatternBuilder requestPatternBuilder) throws JSONException {
-        int actualMatched = 0;
-        for (LoggedRequest request : requests) {
-            String actualRequest = request.getBodyAsString();
-            if (StringUtils.isEmpty(actualRequest)) {
-                continue;
-            }
-            JSONCompareResult result = JSONCompare.compareJSON(expectedRequest, actualRequest,
-                    spec.getCustomComparator());
-            if (result.passed()) {
-                actualMatched++;
-            }
-        }
-        if (!spec.getNumberOfInteractions().match(actualMatched)) {
-            throw buildCountValidationException(spec, expectedRequest, requestPatternBuilder, actualMatched);
-        }
-    }
-
     private VerificationException buildCountValidationException(WireMockJsonVerifySpec spec,
             RequestPatternBuilder requestPatternBuilder, int actualCount) {
         RequestPattern requestPattern = requestPatternBuilder.build();
@@ -101,29 +89,8 @@ public class WireMockVerifier {
                 : new VerificationException(requestPattern, spec.getNumberOfInteractions(), actualCount);
     }
 
-    private VerificationException buildCountValidationException(WireMockJsonVerifySpec spec,
-            String expectedRequest, RequestPatternBuilder requestPatternBuilder, int actualCount) {
-        RequestPattern requestPattern = requestPatternBuilder.build();
-        return actualCount == 0
-                ? verificationExceptionForNearMisses(requestPatternBuilder, expectedRequest)
-                : new VerificationException(requestPattern, spec.getNumberOfInteractions(), actualCount);
-    }
-
     private VerificationException verificationExceptionForNearMisses(RequestPatternBuilder requestPatternBuilder) {
         RequestPattern requestPattern = requestPatternBuilder.build();
-        List<NearMiss> nearMisses = WireMock.findNearMissesFor(requestPatternBuilder);
-        if (nearMisses.size() > 0) {
-            Diff diff = new Diff(requestPattern, nearMisses.get(0).getRequest());
-            return VerificationException.forUnmatchedRequestPattern(diff);
-        }
-
-        return new VerificationException(requestPattern, WireMock.findAll(allRequests()));
-    }
-
-    private VerificationException verificationExceptionForNearMisses(RequestPatternBuilder requestPatternBuilder,
-            String expectedRequest) {
-        RequestPattern requestPattern = requestPatternBuilder.withRequestBody(WireMock.equalTo(expectedRequest))
-                .build();
         List<NearMiss> nearMisses = WireMock.findNearMissesFor(requestPatternBuilder);
         if (nearMisses.size() > 0) {
             Diff diff = new Diff(requestPattern, nearMisses.get(0).getRequest());

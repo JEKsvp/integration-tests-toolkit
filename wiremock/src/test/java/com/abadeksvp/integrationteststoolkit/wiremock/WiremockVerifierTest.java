@@ -57,7 +57,7 @@ public class WiremockVerifierTest {
         restTemplate.getForEntity("http://localhost:" + wiremockPort + "/test",
                 String.class);
 
-        verifier.verify(WireMockJsonVerifySpec.create(RequestMethod.GET, urlEqualTo("/test"))
+        verifier.verify(WireMockJsonVerifySpec.requestedFor(RequestMethod.GET, urlEqualTo("/test"))
                 .withNumberOfInteractions(exactly(1))
         );
     }
@@ -77,7 +77,7 @@ public class WiremockVerifierTest {
         restTemplate.getForEntity("http://localhost:" + wiremockPort + "/test", String.class);
 
         assertThrows(VerificationException.class,
-                () -> verifier.verify(WireMockJsonVerifySpec.create(RequestMethod.GET, urlEqualTo("/test"))
+                () -> verifier.verify(WireMockJsonVerifySpec.requestedFor(RequestMethod.GET, urlEqualTo("/test"))
                         .withNumberOfInteractions(exactly(1))
                         .withRequest("""
                                 {
@@ -102,7 +102,7 @@ public class WiremockVerifierTest {
         restTemplate.getForEntity("http://localhost:" + wiremockPort + "/test", String.class);
 
         assertThrows(VerificationException.class,
-                () -> verifier.verify(WireMockJsonVerifySpec.create(RequestMethod.GET, urlEqualTo("/test"))
+                () -> verifier.verify(WireMockJsonVerifySpec.requestedFor(RequestMethod.GET, urlEqualTo("/test"))
                         .withNumberOfInteractions(exactly(1))
                         .withRequestFromResource("/test-request-body.json")
                 ));
@@ -123,14 +123,15 @@ public class WiremockVerifierTest {
                 .defaultHeader("Test-Header", "test")
                 .build();
         restTemplate.getForEntity("http://localhost:" + wiremockPort + "/test", String.class);
-        verifier.verify(WireMockJsonVerifySpec.create(RequestMethod.GET, urlEqualTo("/test"))
+        verifier.verify(WireMockJsonVerifySpec.requestedFor(RequestMethod.GET, urlEqualTo("/test"))
                 .withNumberOfInteractions(exactly(1))
                 .withHeader("Test-Header", equalTo("test"))
         );
 
-        assertThatThrownBy(() -> verifier.verify(WireMockJsonVerifySpec.create(RequestMethod.GET, urlEqualTo("/test"))
-                .withNumberOfInteractions(exactly(1))
-                .withHeader("Test-Header", equalTo("test2"))))
+        assertThatThrownBy(
+                () -> verifier.verify(WireMockJsonVerifySpec.requestedFor(RequestMethod.GET, urlEqualTo("/test"))
+                        .withNumberOfInteractions(exactly(1))
+                        .withHeader("Test-Header", equalTo("test2"))))
                 .isInstanceOf(VerificationException.class)
                 .hasMessage("""
                         No requests exactly matched. Most similar request was:  expected:<
@@ -169,7 +170,7 @@ public class WiremockVerifierTest {
                     "key4": "key4"
                 }
                 """, String.class);
-        verifier.verify(WireMockJsonVerifySpec.create(RequestMethod.POST, urlEqualTo("/test"))
+        verifier.verify(WireMockJsonVerifySpec.requestedFor(RequestMethod.POST, urlEqualTo("/test"))
                 .withNumberOfInteractions(exactly(1))
                 .withRequest("""
                         {
@@ -183,16 +184,17 @@ public class WiremockVerifierTest {
                         "key2"))
         );
 
-        assertThatThrownBy(() -> verifier.verify(WireMockJsonVerifySpec.create(RequestMethod.POST, urlEqualTo("/test"))
-                .withNumberOfInteractions(exactly(1))
-                .withRequest("""
-                        {
-                            "key1": "key1",
-                            "key2": "key2",
-                            "key3": "key3",
-                            "key4": "key4"
-                        }
-                        """)))
+        assertThatThrownBy(
+                () -> verifier.verify(WireMockJsonVerifySpec.requestedFor(RequestMethod.POST, urlEqualTo("/test"))
+                        .withNumberOfInteractions(exactly(1))
+                        .withRequest("""
+                                {
+                                    "key1": "key1",
+                                    "key2": "key2",
+                                    "key3": "key3",
+                                    "key4": "key4"
+                                }
+                                """)))
                 .isInstanceOf(VerificationException.class)
                 .hasMessage("""                      
                         No requests exactly matched. Most similar request was:  expected:<
@@ -216,5 +218,42 @@ public class WiremockVerifierTest {
                             "key4": "key4"
                         }
                         >""");
+    }
+
+
+    @Test
+    @DisplayName("POST request with verification of non-json body")
+    void verifyPostRequestWithNonJsonBody() {
+        stubFor(post("/test")
+                .willReturn(okForJson("Test non-json response"))
+        );
+
+        RestTemplate restTemplate = new RestTemplateBuilder().build();
+        restTemplate.postForEntity("http://localhost:" + wiremockPort + "/test", "Non-json request.", String.class);
+        verifier.verify(
+                WireMockJsonVerifySpec.requestedFor(RequestMethod.POST, urlEqualTo("/test"), RequestBodyType.TEXT)
+                        .withNumberOfInteractions(exactly(1))
+                        .withRequest("Non-json request.")
+        );
+
+        assertThatThrownBy(
+                () -> verifier.verify(
+                        WireMockJsonVerifySpec.requestedFor(RequestMethod.POST, urlEqualTo("/test"),
+                                        RequestBodyType.TEXT)
+                                .withNumberOfInteractions(exactly(1))
+                                .withRequest("Non-json request2.")
+                ))
+                .isInstanceOf(VerificationException.class)
+                .hasMessage("""
+                        No requests exactly matched. Most similar request was:  expected:<
+                        POST
+                        /test
+
+                        Non-json request2.> but was:<
+                        POST
+                        /test
+
+                        Non-json request.>"""
+                );
     }
 }
