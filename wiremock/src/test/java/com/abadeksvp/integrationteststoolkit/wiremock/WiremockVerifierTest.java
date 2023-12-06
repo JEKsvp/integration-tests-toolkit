@@ -13,6 +13,9 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.cloud.contract.wiremock.AutoConfigureWireMock;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.client.ClientHttpResponse;
+import org.springframework.web.client.ResponseExtractor;
 import org.springframework.web.client.RestTemplate;
 
 import com.abadeksvp.integrationteststoolkit.JsonAssertUtils;
@@ -31,9 +34,13 @@ import static com.abadeksvp.integrationteststoolkit.wiremock.WireMockVerifier.ve
 import static com.github.tomakehurst.wiremock.client.ResponseDefinitionBuilder.okForJson;
 import static com.github.tomakehurst.wiremock.client.WireMock.equalTo;
 import static com.github.tomakehurst.wiremock.client.WireMock.exactly;
+import static com.github.tomakehurst.wiremock.client.WireMock.head;
 import static com.github.tomakehurst.wiremock.client.WireMock.ok;
+import static com.github.tomakehurst.wiremock.client.WireMock.options;
+import static com.github.tomakehurst.wiremock.client.WireMock.patch;
 import static com.github.tomakehurst.wiremock.client.WireMock.post;
 import static com.github.tomakehurst.wiremock.client.WireMock.stubFor;
+import static com.github.tomakehurst.wiremock.client.WireMock.trace;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo;
 
 @SpringBootTest(classes = TestRunnerConfig.class)
@@ -415,5 +422,84 @@ public class WiremockVerifierTest {
                           "url" : "/test",\r
                           "method" : "POST"\r
                         }""");
+    }
+
+    @Test
+    @DisplayName("Simple PUT request verified correctly")
+    void verifyEmptyPutRequestTest() {
+        stubFor(WireMock.put("/test")
+                .willReturn(ok())
+        );
+
+        RestTemplate restTemplate = new RestTemplate();
+        restTemplate.put("http://localhost:" + wiremockPort + "/test",
+                String.class);
+
+        verify(requestedFor(RequestMethod.PUT, urlEqualTo("/test"))
+                .withNumberOfInteractions(exactly(1))
+        );
+    }
+
+    @Test
+    @DisplayName("Simple DELETE request verified correctly")
+    void verifyEmptyDeleteRequestTest() {
+        stubFor(WireMock.delete("/test")
+                .willReturn(ok())
+        );
+
+        RestTemplate restTemplate = new RestTemplate();
+        restTemplate.delete("http://localhost:" + wiremockPort + "/test");
+
+        verify(requestedFor(RequestMethod.DELETE, urlEqualTo("/test"))
+                .withNumberOfInteractions(exactly(1))
+        );
+    }
+
+    @Test
+    @DisplayName("Simple OPTIONS request verified correctly")
+    void verifyEmptyOptionsRequestTest() {
+        stubFor(options(urlEqualTo("/test"))
+                .willReturn(ok())
+        );
+
+        RestTemplate restTemplate = new RestTemplate();
+        restTemplate.optionsForAllow("http://localhost:" + wiremockPort + "/test");
+
+        verify(requestedFor(RequestMethod.OPTIONS, urlEqualTo("/test"))
+                .withNumberOfInteractions(exactly(1))
+        );
+    }
+
+    @Test
+    @DisplayName("Simple HEAD request verified correctly")
+    void verifyEmptyHeadRequestTest() {
+        stubFor(head(urlEqualTo("/test"))
+                .willReturn(ok())
+        );
+
+        RestTemplate restTemplate = new RestTemplate();
+        restTemplate.headForHeaders("http://localhost:" + wiremockPort + "/test");
+
+        verify(requestedFor(RequestMethod.HEAD, urlEqualTo("/test"))
+                .withNumberOfInteractions(exactly(1))
+        );
+    }
+
+    @Test
+    @DisplayName("Simple TRACE request verified correctly")
+    void verifyEmptyTraceRequestTest() {
+        stubFor(trace(urlEqualTo("/test"))
+                .willReturn(ok())
+        );
+
+        RestTemplate restTemplate = new RestTemplate();
+        restTemplate.execute("http://localhost:" + wiremockPort + "/test", HttpMethod.TRACE,
+                request -> {
+
+                }, (ResponseExtractor<ClientHttpResponse>) response -> null);
+
+        verify(requestedFor(RequestMethod.TRACE, urlEqualTo("/test"))
+                .withNumberOfInteractions(exactly(1))
+        );
     }
 }
