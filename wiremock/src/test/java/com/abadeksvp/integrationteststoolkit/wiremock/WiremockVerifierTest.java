@@ -1,5 +1,10 @@
 package com.abadeksvp.integrationteststoolkit.wiremock;
 
+import java.time.Duration;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
+import org.awaitility.core.ConditionTimeoutException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -21,6 +26,7 @@ import com.github.tomakehurst.wiremock.http.RequestMethod;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import static com.abadeksvp.integrationteststoolkit.wiremock.WireMockJsonVerifySpec.requestedFor;
 import static com.abadeksvp.integrationteststoolkit.wiremock.WireMockVerifier.verify;
 import static com.github.tomakehurst.wiremock.client.ResponseDefinitionBuilder.okForJson;
 import static com.github.tomakehurst.wiremock.client.WireMock.equalTo;
@@ -61,9 +67,79 @@ public class WiremockVerifierTest {
         restTemplate.getForEntity("http://localhost:" + wiremockPort + "/test",
                 String.class);
 
-        verify(WireMockJsonVerifySpec.requestedFor(RequestMethod.GET, urlEqualTo("/test"))
+        verify(requestedFor(RequestMethod.GET, urlEqualTo("/test"))
                 .withNumberOfInteractions(exactly(1))
         );
+    }
+
+    @Test
+    @DisplayName("GET request with insufficient number of interactions throws correct exception")
+    void verifyInsufficientNumberOfInteractions() {
+        stubFor(WireMock.get("/test")
+                .willReturn(ok())
+        );
+
+        RestTemplate restTemplate = new RestTemplate();
+        restTemplate.getForEntity("http://localhost:" + wiremockPort + "/test",
+                String.class);
+
+        assertThatThrownBy(
+                () -> verify(requestedFor(RequestMethod.GET, urlEqualTo("/test"))
+                        .withNumberOfInteractions(exactly(2))
+                ))
+                .isInstanceOf(VerificationException.class)
+                .hasMessage("""
+                        Expected exactly 2 requests matching the following pattern but received 1:
+                        {\r
+                          "url" : "/test",\r
+                          "method" : "GET"\r
+                        }""");
+    }
+
+    @Test
+    @DisplayName("Async request will be awaited and verified correctly")
+    void verifyAwaitWorksCorrectlyTest() {
+        stubFor(WireMock.get("/test")
+                .willReturn(ok())
+        );
+
+        ExecutorService executor = Executors.newSingleThreadExecutor();
+        executor.submit(() -> {
+            try {
+                Thread.sleep(1000);
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+            RestTemplate restTemplate = new RestTemplate();
+            restTemplate.getForEntity("http://localhost:" + wiremockPort + "/test",
+                    String.class);
+        });
+
+        verify(requestedFor(RequestMethod.GET, urlEqualTo("/test"))
+                .withNumberOfInteractions(exactly(1))
+                .withWaitDuration(Duration.ofSeconds(5))
+        );
+    }
+
+    @Test
+    @DisplayName("Async request will be awaited and throws correct exception when verification fails")
+    void verifyAsyncAwaitWorksCorrectlyWithCorrectExceptionTest() {
+        stubFor(WireMock.get("/test")
+                .willReturn(ok())
+        );
+
+        assertThatThrownBy(
+                () -> verify(requestedFor(RequestMethod.GET, urlEqualTo("/test"))
+                        .withNumberOfInteractions(exactly(1))
+                        .withWaitDuration(Duration.ofSeconds(1))
+                ))
+                .isInstanceOf(ConditionTimeoutException.class)
+                .hasMessage("""
+                        Assertion condition defined as a com.abadeksvp.integrationteststoolkit.wiremock.WireMockVerifier Expected at least one request matching: {\r
+                          "url" : "/test",\r
+                          "method" : "GET"\r
+                        }
+                        Requests received: [ ] within 1 seconds.""");
     }
 
     @Test
@@ -81,7 +157,7 @@ public class WiremockVerifierTest {
         restTemplate.getForEntity("http://localhost:" + wiremockPort + "/test", String.class);
 
         assertThrows(VerificationException.class,
-                () -> verify(WireMockJsonVerifySpec.requestedFor(RequestMethod.GET, urlEqualTo("/test"))
+                () -> verify(requestedFor(RequestMethod.GET, urlEqualTo("/test"))
                         .withNumberOfInteractions(exactly(1))
                         .withJsonBody("""
                                 {
@@ -106,7 +182,7 @@ public class WiremockVerifierTest {
         restTemplate.getForEntity("http://localhost:" + wiremockPort + "/test", String.class);
 
         assertThrows(VerificationException.class,
-                () -> verify(WireMockJsonVerifySpec.requestedFor(RequestMethod.GET, urlEqualTo("/test"))
+                () -> verify(requestedFor(RequestMethod.GET, urlEqualTo("/test"))
                         .withNumberOfInteractions(exactly(1))
                         .withJsonBody(resourceReader.readString("/test-request-body.json"))
                 ));
@@ -127,13 +203,13 @@ public class WiremockVerifierTest {
                 .defaultHeader("Test-Header", "test")
                 .build();
         restTemplate.getForEntity("http://localhost:" + wiremockPort + "/test", String.class);
-        verify(WireMockJsonVerifySpec.requestedFor(RequestMethod.GET, urlEqualTo("/test"))
+        verify(requestedFor(RequestMethod.GET, urlEqualTo("/test"))
                 .withNumberOfInteractions(exactly(1))
                 .withHeader("Test-Header", equalTo("test"))
         );
 
         assertThatThrownBy(
-                () -> verify(WireMockJsonVerifySpec.requestedFor(RequestMethod.GET, urlEqualTo("/test"))
+                () -> verify(requestedFor(RequestMethod.GET, urlEqualTo("/test"))
                         .withNumberOfInteractions(exactly(1))
                         .withHeader("Test-Header", equalTo("test2"))))
                 .isInstanceOf(VerificationException.class)
@@ -174,7 +250,7 @@ public class WiremockVerifierTest {
                     "key4": "key4"
                 }
                 """, String.class);
-        verify(WireMockJsonVerifySpec.requestedFor(RequestMethod.POST, urlEqualTo("/test"))
+        verify(requestedFor(RequestMethod.POST, urlEqualTo("/test"))
                 .withNumberOfInteractions(exactly(1))
                 .withJsonBody("""
                                 {
@@ -188,7 +264,7 @@ public class WiremockVerifierTest {
         );
 
         assertThatThrownBy(
-                () -> verify(WireMockJsonVerifySpec.requestedFor(RequestMethod.POST, urlEqualTo("/test"))
+                () -> verify(requestedFor(RequestMethod.POST, urlEqualTo("/test"))
                         .withNumberOfInteractions(exactly(1))
                         .withJsonBody("""
                                 {
@@ -234,13 +310,13 @@ public class WiremockVerifierTest {
         RestTemplate restTemplate = new RestTemplateBuilder().build();
         restTemplate.postForEntity("http://localhost:" + wiremockPort + "/test", "Non-json request.", String.class);
         verify(
-                WireMockJsonVerifySpec.requestedFor(RequestMethod.POST, urlEqualTo("/test"))
+                requestedFor(RequestMethod.POST, urlEqualTo("/test"))
                         .withNumberOfInteractions(exactly(1))
                         .withTextBody(equalTo("Non-json request."))
         );
 
         assertThatThrownBy(
-                () -> verify(WireMockJsonVerifySpec.requestedFor(RequestMethod.POST, urlEqualTo("/test"))
+                () -> verify(requestedFor(RequestMethod.POST, urlEqualTo("/test"))
                         .withNumberOfInteractions(exactly(1))
                         .withTextBody(equalTo("Non-json request2."))
                 ))
@@ -269,7 +345,7 @@ public class WiremockVerifierTest {
         restTemplate.postForEntity("http://localhost:" + wiremockPort + "/test", "Non-json request.", String.class);
 
         assertThatThrownBy(
-                () -> verify(WireMockJsonVerifySpec.requestedFor(RequestMethod.POST, urlEqualTo("/test"))
+                () -> verify(requestedFor(RequestMethod.POST, urlEqualTo("/test"))
                         .withNumberOfInteractions(exactly(1))
                         .withJsonBody("""
                                 {
