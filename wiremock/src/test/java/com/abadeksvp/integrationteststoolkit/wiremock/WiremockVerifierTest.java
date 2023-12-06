@@ -299,7 +299,6 @@ public class WiremockVerifierTest {
                         >""");
     }
 
-
     @Test
     @DisplayName("POST request with verification of non-json body")
     void verifyPostRequestWithNonJsonBody() {
@@ -368,5 +367,53 @@ public class WiremockVerifierTest {
                                                 
                         Non-json request.>"""
                 );
+    }
+
+    @Test
+    @DisplayName("POST request to the same endpoint but with different bodies verified correctly")
+    public void verifyPostRequestWithDifferentBodies() {
+        stubFor(post("/test")
+                .willReturn(okForJson("""
+                        {
+                            "key1": "key1"
+                        }
+                        """))
+        );
+
+        RestTemplate restTemplate = new RestTemplateBuilder().build();
+
+        //first interaction
+        restTemplate.postForEntity("http://localhost:" + wiremockPort + "/test", """
+                {
+                    "key1": "val1"
+                }
+                """, String.class);
+
+        //second interaction
+        restTemplate.postForEntity("http://localhost:" + wiremockPort + "/test", """
+                {
+                    "key2": "val2"
+                }
+                """, String.class);
+
+        verify(requestedFor(RequestMethod.POST, urlEqualTo("/test"))
+                .withNumberOfInteractions(exactly(2))
+        );
+
+        assertThatThrownBy(
+                () -> verify(requestedFor(RequestMethod.POST, urlEqualTo("/test"))
+                        .withNumberOfInteractions(exactly(2))
+                        .withJsonBody("""
+                                {
+                                    "key1": "val1"
+                                }
+                                """)))
+                .isInstanceOf(VerificationException.class)
+                .hasMessage("""
+                        Expected exactly 2 requests matching the following pattern but received 1:
+                        {\r
+                          "url" : "/test",\r
+                          "method" : "POST"\r
+                        }""");
     }
 }
