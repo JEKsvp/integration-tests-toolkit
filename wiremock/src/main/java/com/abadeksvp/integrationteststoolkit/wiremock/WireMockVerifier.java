@@ -23,9 +23,17 @@ import static com.github.tomakehurst.wiremock.http.RequestMethod.POST;
 import static com.github.tomakehurst.wiremock.http.RequestMethod.PUT;
 import static com.github.tomakehurst.wiremock.matching.RequestPatternBuilder.allRequests;
 
+/**
+ * The WireMockVerifier class is responsible for verifying requests based on the given WireMockVerificationSpec object.
+ */
 public class WireMockVerifier {
 
-    public static void verify(WireMockJsonVerifySpec spec) {
+    /**
+     * Verifies the requests based on the given WireMockVerificationSpec object.
+     *
+     * @param spec the WireMockVerificationSpec object specifying the verification criteria
+     */
+    public static void verify(WireMockVerificationSpec spec) {
         if (spec.getWaitDuration() != null) {
             Awaitility.await()
                     .atMost(spec.getWaitDuration())
@@ -36,7 +44,7 @@ public class WireMockVerifier {
     }
 
     @SneakyThrows
-    private static void verifyInternal(WireMockJsonVerifySpec spec) {
+    private static void verifyInternal(WireMockVerificationSpec spec) {
         RequestPatternBuilder requestPatternBuilder = defineRequestPattern(spec);
 
         List<LoggedRequest> requests = WireMock.findAll(requestPatternBuilder);
@@ -51,7 +59,7 @@ public class WireMockVerifier {
         }
     }
 
-    private static VerificationException buildCountValidationException(WireMockJsonVerifySpec spec,
+    private static VerificationException buildCountValidationException(WireMockVerificationSpec spec,
             RequestPatternBuilder requestPatternBuilder, int actualCount) {
         RequestPattern requestPattern = requestPatternBuilder.build();
         return actualCount == 0
@@ -71,7 +79,7 @@ public class WireMockVerifier {
         return new VerificationException(requestPattern, WireMock.findAll(allRequests()));
     }
 
-    private static RequestPatternBuilder defineRequestPattern(WireMockJsonVerifySpec spec) {
+    private static RequestPatternBuilder defineRequestPattern(WireMockVerificationSpec spec) {
         RequestPatternBuilder patternBuilder;
         if (spec.getHttpMethod().equals(GET)) {
             patternBuilder = WireMock.getRequestedFor(spec.getUrlPattern());

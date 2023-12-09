@@ -2,7 +2,7 @@ package com.abadeksvp.integrationteststoolkit.wiremock.verifier;
 
 import java.util.List;
 
-import com.abadeksvp.integrationteststoolkit.wiremock.WireMockJsonVerifySpec;
+import com.abadeksvp.integrationteststoolkit.wiremock.WireMockVerificationSpec;
 import com.github.tomakehurst.wiremock.client.WireMock;
 import com.github.tomakehurst.wiremock.matching.EqualToXmlPattern;
 import com.github.tomakehurst.wiremock.matching.RequestPatternBuilder;
@@ -17,7 +17,7 @@ public class XmlBodyVerifier implements RequestBodyVerifier {
     }
 
     @Override
-    public void verify(WireMockJsonVerifySpec spec, List<LoggedRequest> requests,
+    public void verify(WireMockVerificationSpec spec, List<LoggedRequest> requests,
             RequestPatternBuilder requestPatternBuilder) {
         WireMock.verify(requestPatternBuilder.withRequestBody(equalToXmlPattern));
     }

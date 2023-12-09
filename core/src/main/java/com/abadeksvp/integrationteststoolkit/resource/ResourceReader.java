@@ -2,24 +2,24 @@ package com.abadeksvp.integrationteststoolkit.resource;
 
 
 /**
- * ResourceReader is an interface that provides methods for reading resources as a string;
+ * The ResourceReader interface provides methods to read resources from various sources.
  */
 public interface ResourceReader {
 
 
     /**
-     * Reads a string from a specified source.
+     * Reads the content of a resource as a string.
      *
-     * @param name the name of the source from which to read the string
-     * @return the string read from the specified source
+     * @param name the name of the resource to read
+     * @return the content of the resource as a string
      */
     public String readString(String name);
 
     /**
-     * Performs a read operation from a specified source.
+     * Reads the content of a resource and returns a ReadResult object.
      *
-     * @param name the name of the source from which to perform the read operation
-     * @return the result of the read operation
+     * @param name the name of the resource to read
+     * @return a ReadResult object that contains the content of the resource
      */
     public ReadResult read(String name);
 }

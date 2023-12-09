@@ -29,7 +29,7 @@ import com.github.tomakehurst.wiremock.http.RequestMethod;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-import static com.abadeksvp.integrationteststoolkit.wiremock.WireMockJsonVerifySpec.requestedFor;
+import static com.abadeksvp.integrationteststoolkit.wiremock.WireMockVerificationSpec.requestedFor;
 import static com.abadeksvp.integrationteststoolkit.wiremock.WireMockVerifier.verify;
 import static com.github.tomakehurst.wiremock.client.ResponseDefinitionBuilder.okForJson;
 import static com.github.tomakehurst.wiremock.client.WireMock.equalTo;
@@ -37,7 +37,6 @@ import static com.github.tomakehurst.wiremock.client.WireMock.exactly;
 import static com.github.tomakehurst.wiremock.client.WireMock.head;
 import static com.github.tomakehurst.wiremock.client.WireMock.ok;
 import static com.github.tomakehurst.wiremock.client.WireMock.options;
-import static com.github.tomakehurst.wiremock.client.WireMock.patch;
 import static com.github.tomakehurst.wiremock.client.WireMock.post;
 import static com.github.tomakehurst.wiremock.client.WireMock.stubFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.trace;
@@ -124,7 +123,7 @@ public class WiremockVerifierTest {
 
         verify(requestedFor(RequestMethod.GET, urlEqualTo("/test"))
                 .withNumberOfInteractions(exactly(1))
-                .withWaitDuration(Duration.ofSeconds(5))
+                .waitAtMost(Duration.ofSeconds(5))
         );
     }
 
@@ -138,7 +137,7 @@ public class WiremockVerifierTest {
         assertThatThrownBy(
                 () -> verify(requestedFor(RequestMethod.GET, urlEqualTo("/test"))
                         .withNumberOfInteractions(exactly(1))
-                        .withWaitDuration(Duration.ofSeconds(1))
+                        .waitAtMost(Duration.ofSeconds(1))
                 ))
                 .isInstanceOf(ConditionTimeoutException.class)
                 .hasMessage("""
@@ -267,7 +266,10 @@ public class WiremockVerifierTest {
                                     "key4": "key4"
                                 }
                                 """,
-                        JsonAssertUtils.withCompareRules(JSONCompareMode.STRICT, "key2"))
+                        JsonAssertUtils.withCompareMode(JSONCompareMode.LENIENT)
+                                .withIgnoredFields("key2")
+                                .build()
+                )
         );
 
         assertThatThrownBy(

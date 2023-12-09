@@ -13,6 +13,9 @@ import lombok.extern.slf4j.Slf4j;
 import static com.github.tomakehurst.wiremock.client.ResponseDefinitionBuilder.responseDefinition;
 
 
+/**
+ * The WireMockStubCreator class provides methods to create stub mappings for WireMock server.
+ */
 @Slf4j
 public class WireMockStubCreator {
 

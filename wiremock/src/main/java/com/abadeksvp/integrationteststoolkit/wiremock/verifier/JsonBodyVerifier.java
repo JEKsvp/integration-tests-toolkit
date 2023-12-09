@@ -9,7 +9,7 @@ import org.skyscreamer.jsonassert.JSONCompareResult;
 import org.skyscreamer.jsonassert.JSONParser;
 import org.skyscreamer.jsonassert.comparator.CustomComparator;
 
-import com.abadeksvp.integrationteststoolkit.wiremock.WireMockJsonVerifySpec;
+import com.abadeksvp.integrationteststoolkit.wiremock.WireMockVerificationSpec;
 import com.github.tomakehurst.wiremock.client.VerificationException;
 import com.github.tomakehurst.wiremock.client.WireMock;
 import com.github.tomakehurst.wiremock.matching.RequestPattern;
@@ -36,7 +36,7 @@ public class JsonBodyVerifier implements RequestBodyVerifier {
 
     @Override
     @SneakyThrows
-    public void verify(WireMockJsonVerifySpec spec, List<LoggedRequest> requests,
+    public void verify(WireMockVerificationSpec spec, List<LoggedRequest> requests,
             RequestPatternBuilder requestPatternBuilder) {
         String expectedRequest = content;
         if (expectedRequest == null) {
@@ -70,7 +70,7 @@ public class JsonBodyVerifier implements RequestBodyVerifier {
         }
     }
 
-    private VerificationException buildCountValidationException(WireMockJsonVerifySpec spec,
+    private VerificationException buildCountValidationException(WireMockVerificationSpec spec,
             String expectedRequest, RequestPatternBuilder requestPatternBuilder, int actualCount) {
         RequestPattern requestPattern = requestPatternBuilder.build();
         return actualCount == 0
