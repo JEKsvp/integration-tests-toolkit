@@ -65,6 +65,9 @@ Other types of body are supported as well.
 
 ```java
 .withXmlBody(equalToXml(...));
+```
+
+```java
 .withTextBody(equalTo(""));
 ```
 
