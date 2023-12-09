@@ -3,24 +3,22 @@
 ## Introduction
 
 The module provides enhanced tools to work with [Wiremock](http://wiremock.org/) in a Spring Boot environment.
-As wiremock provider is
-used [spring-cloud-contract-wiremock](http://cloud.spring.io/spring-cloud-contract/spring-cloud-contract.html#_spring_cloud_contract_wiremock)
+[spring-cloud-contract-wiremock](http://cloud.spring.io/spring-cloud-contract/spring-cloud-contract.html#_spring_cloud_contract_wiremock)
+is used as a wiremock server.
 
 ## Usage
 
 ### Simple request verification
 
-To verify that a request was made to a Wiremock server, use the `WireMockVerifier` class.
+To verify that a request was made to a Wiremock server, use the `WireMockVerifier` class:
 
 ```java
-void verifyRequest() {
-    WireMockVerifier.verify(WireMockVerificationSpec.requestedFor(RequestMethod.GET, urlEqualTo("/test")));
-}
+WireMockVerifier.verify(WireMockVerificationSpec.requestedFor(RequestMethod.GET, urlEqualTo("/test")));
 ```
 
 ### Number of requests verification
 
-To verify that a request was made a certain number of times, use
+To verify that a request was made a certain number of times, use method:
 
 ```java
 .withNumberOfInteractions(exactly(1))
@@ -28,7 +26,7 @@ To verify that a request was made a certain number of times, use
 
 ### Request headers verification
 
-To verify that request with specific headers was made, use
+To verify that request with specific headers was made, use method:
 
 ```java
 .withHeader("Content-Type",equalTo("application/json"))
@@ -36,7 +34,7 @@ To verify that request with specific headers was made, use
 
 ### Request body verification
 
-To verify that request with specific body was made, use
+To verify that request with specific body was made, use method:
 
 ```java
 .withJsonBody("""
@@ -67,9 +65,7 @@ Other types of body are supported as well.
 
 ```java
 .withXmlBody(equalToXml(...));
-        .
-
-withTextBody(equalTo(""));
+.withTextBody(equalTo(""));
 ```
 
 and if you want to specify your custom body verifier, you can use method.
@@ -78,7 +74,7 @@ and if you want to specify your custom body verifier, you can use method.
 .withBody(...);
 ```
 
-### Waiting for requests
+### Waiting for asynchronous requests
 
 If you use asynchronous communication, you can wait for a request to be made to Wiremock server.
 
