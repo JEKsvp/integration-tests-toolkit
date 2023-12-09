@@ -10,7 +10,7 @@ is used as a wiremock server.
 
 ### Simple request verification
 
-To verify that a request was made to a Wiremock server, use the `WireMockVerifier` class:
+To verify that a request was made to a Wiremock server, use the `WireMockVerifier` class.
 
 ```java
 WireMockVerifier.verify(WireMockVerificationSpec.requestedFor(RequestMethod.GET, urlEqualTo("/test")));
@@ -18,7 +18,7 @@ WireMockVerifier.verify(WireMockVerificationSpec.requestedFor(RequestMethod.GET,
 
 ### Number of requests verification
 
-To verify that a request was made a certain number of times, use method:
+To verify that a request was made a certain number of times, use method
 
 ```java
 .withNumberOfInteractions(exactly(1))
@@ -26,7 +26,7 @@ To verify that a request was made a certain number of times, use method:
 
 ### Request headers verification
 
-To verify that request with specific headers was made, use method:
+To verify that request with specific headers was made, use method
 
 ```java
 .withHeader("Content-Type",equalTo("application/json"))
@@ -34,7 +34,7 @@ To verify that request with specific headers was made, use method:
 
 ### Request body verification
 
-To verify that request with specific body was made, use method:
+To verify that request with specific body was made, use method
 
 ```java
 .withJsonBody("""
@@ -71,7 +71,7 @@ Other types of body are supported as well.
 .withTextBody(equalTo(""));
 ```
 
-and if you want to specify your custom body verifier, you can use method.
+and if you want to specify your custom body verifier, you can use method
 
 ```java
 .withBody(...);
